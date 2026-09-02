@@ -59,9 +59,10 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .sample-card__identity { flex: 0 0 clamp(230px, 19vw, 300px); min-width: 0; }
 .sample-card__header h2 { margin: 1px 0 3px; font-size: 1.28rem; }
 .sample-card__header p { margin: 0; color: var(--muted); font-size: .82rem; }
-.sample-card__title-row { display: flex; align-items: center; gap: 9px; }
-.sample-card__pk-badge { display: inline-flex; flex: none; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 999px; color: #1d6549; background: #e6f6ef; font-size: .68rem; font-weight: 800; white-space: nowrap; }
-.sample-card__pk-badge svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.sample-card__title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 7px 9px; }
+.sample-card__file-badges { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.sample-card__file-badge { display: inline-flex; flex: none; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 999px; color: #1d6549; background: #e6f6ef; font-size: .68rem; font-weight: 800; white-space: nowrap; }
+.sample-card__file-badge svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .sample-card__eyebrow { color: var(--brand); font-size: .69rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .sample-card__actions { display: flex; flex: 1 1 auto; min-width: 0; align-items: start; justify-content: flex-end; gap: 9px; }
 .local-actions { display: flex; flex: none; gap: 5px; }

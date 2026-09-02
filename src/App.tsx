@@ -57,7 +57,7 @@ export function App() {
     }));
     const pairs = pairXrdFiles(loaded);
     const missingGl = pairs.filter((pair) => !pair.gl).map((pair) => `${pair.sampleId}: GL не найден`);
-    const unclassified = loaded.filter((file) => !pairs.some((pair) => pair.gl === file || pair.vs === file || pair.pk === file)).map((file) => `${file.fileName}: имя не содержит токен GL, VS или PK`);
+    const unclassified = loaded.filter((file) => !pairs.some((pair) => pair.gl === file || pair.vs === file || pair.pk === file || pair.tp === file || pair.sp === file || pair.ost === file)).map((file) => `${file.fileName}: имя не содержит токен GL, VS, PK, TP, SP или OST`);
     const glFiles = pairs.flatMap((pair) => pair.gl ? [pair.gl] : []);
     if (!glFiles.length) {
       setMessages([...errors, ...missingGl, ...unclassified, 'GL-файлы для загрузки не найдены']);
@@ -91,7 +91,7 @@ export function App() {
       .map(initializeBaselines)
       .map((sample) => initializePeaks(sample, project.settings.fitModel));
     const missingGl = pairs.filter((pair) => !pair.gl).map((pair) => `${pair.sampleId}: GL не найден`);
-    const unclassified = pendingImport.loaded.filter((file) => !pairs.some((pair) => pair.gl === file || pair.vs === file || pair.pk === file)).map((file) => `${file.fileName}: имя не содержит токен GL, VS или PK`);
+    const unclassified = pendingImport.loaded.filter((file) => !pairs.some((pair) => pair.gl === file || pair.vs === file || pair.pk === file || pair.tp === file || pair.sp === file || pair.ost === file)).map((file) => `${file.fileName}: имя не содержит токен GL, VS, PK, TP, SP или OST`);
     setMessages([...pendingImport.errors, ...missingGl, ...unclassified]);
     setProject((current) => ({ ...current, samples }));
     setCropError(undefined);

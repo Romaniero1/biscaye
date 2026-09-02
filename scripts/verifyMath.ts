@@ -63,6 +63,10 @@ const shortIdentity = identifyXrdFile('4.il.gl.txt');
 if (shortIdentity?.sampleId !== '4.il' || shortIdentity.state !== 'GL') throw new Error('Short GL pairing');
 const pkIdentity = identifyXrdFile('1-6.il.pk_004.txt');
 if (pkIdentity?.sampleId !== '1-6.il_004' || pkIdentity.state !== 'PK') throw new Error('PK pairing');
+for (const state of ['TP', 'SP', 'OST'] as const) {
+  const extraIdentity = identifyXrdFile(`1-6.il.${state.toLowerCase()}_004.txt`);
+  if (extraIdentity?.sampleId !== '1-6.il_004' || extraIdentity.state !== state) throw new Error(`${state} pairing`);
+}
 if (buildProjectFileName('Проект', 6, 'XLSX', 'xlsx') !== 'Проект_6_XLSX.xlsx') throw new Error('Project export filename');
 
 const uncropped = [{ x: 1.5, y: 1 }, { x: 2, y: 2 }, { x: 15, y: 3 }, { x: 16, y: 4 }];

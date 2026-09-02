@@ -64,10 +64,21 @@ const results = pairs.map((pair) => {
 });
 
 const svg = buildDiffractogramSvg(fittedSamples);
-for (const fragment of ['id="air-dry"', 'id="glycol"', 'id="heated"', '>17.5<', '>3.58<', 'θ/2θ (градусы)', 'PK 550 °C не загружен']) {
+for (const fragment of ['id="air-dry"', 'id="glycol"', 'id="heated"', '>17.5<', '>3.58<', 'θ/2θ (градусы)', 'PK не загружен']) {
   if (!svg.includes(fragment)) throw new Error(`SVG не содержит обязательный элемент: ${fragment}`);
 }
 if ((svg.match(/class="sample-label"/g) ?? []).length !== fittedSamples.length * 2) throw new Error('SVG sample labels without PK');
+const extendedSvg = buildDiffractogramSvg(fittedSamples.map((sample) => ({
+  ...sample,
+  rawTpData: sample.rawVsData,
+  rawSpData: sample.rawVsData,
+  rawOstData: sample.rawVsData,
+})));
+for (const panelId of ['tp', 'sp', 'ost']) {
+  if (!extendedSvg.includes(`id="${panelId}"`)) throw new Error(`SVG ${panelId.toUpperCase()} panel`);
+}
+if (!extendedSvg.includes('height="5765"') || (extendedSvg.match(/>3\.58</g) ?? []).length !== 4) throw new Error('Dynamic SVG panels and VS guides');
+if ((extendedSvg.match(/class="sample-label"/g) ?? []).length !== fittedSamples.length * 5) throw new Error('SVG sample labels with TP/SP/OST');
 
 console.table(results);
 console.log('Real data parsing and GL/VS pairing checks passed');

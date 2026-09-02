@@ -19,6 +19,12 @@ type SampleCardProps = {
 export function SampleCard({ sample, expanded, onToggle, onMarkerMove, onBackgroundMove, onBackgroundAdd, onFit, onReset }: SampleCardProps) {
   const bodyId = `sample-card-body-${sample.id}`;
   const canFit = sample.backgroundPoints.length >= 3 && sample.backgroundCurve.length > 0;
+  const auxiliaryFiles = [
+    { code: 'PK', fileName: sample.pkFileName },
+    { code: 'TP', fileName: sample.tpFileName },
+    { code: 'SP', fileName: sample.spFileName },
+    { code: 'OST', fileName: sample.ostFileName },
+  ] as const;
   return (
     <article className="sample-card">
       <header className="sample-card__header">
@@ -26,12 +32,14 @@ export function SampleCard({ sample, expanded, onToggle, onMarkerMove, onBackgro
           <span className="sample-card__eyebrow">Образец</span>
           <div className="sample-card__title-row">
             <h2>{sample.sampleId}</h2>
-            {sample.pkFileName && (
-              <span className="sample-card__pk-badge" title={`Загружен: ${sample.pkFileName}`} aria-label={`Прокалённый препарат 550 °C загружен: ${sample.pkFileName}`}>
-                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8 3 3 6-6" /></svg>
-                PK 550 °C
-              </span>
-            )}
+            <span className="sample-card__file-badges">
+              {auxiliaryFiles.map(({ code, fileName }) => fileName ? (
+                <span key={code} className="sample-card__file-badge" title={`Загружен: ${fileName}`} aria-label={`${code} загружен: ${fileName}`}>
+                  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8 3 3 6-6" /></svg>
+                  {code}
+                </span>
+              ) : null)}
+            </span>
           </div>
           <p>{sample.glFileName}{sample.vsFileName ? ` · ${sample.vsFileName}` : ''}</p>
         </div>

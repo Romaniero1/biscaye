@@ -4,13 +4,16 @@ import type { SampleState, XYPoint } from '../types';
 import { downloadBlob } from './exportData';
 
 const SVG_WIDTH = 1500;
-const SVG_HEIGHT = 2360;
+const BASE_SVG_HEIGHT = 2360;
+const FULL_PANEL_HEIGHT = 1085;
+const FULL_PANEL_GAP = 50;
 const CURVE_COLORS = ['#ff1717', '#1428ff', '#138c1b', '#ffa20b', '#86118d', '#303030', '#f01818'] as const;
 
 type Frame = Readonly<{ x: number; y: number; width: number; height: number }>;
 type Guide = Readonly<{ d: number; label: string; level?: number }>;
 type Panel = Readonly<{
   id: string;
+  label: string;
   frame: Frame;
   xDomain: readonly [number, number];
   guides: readonly Guide[];
@@ -148,6 +151,7 @@ function renderPanel(panel: Panel, samples: readonly SampleState[], wavelength: 
     height: panel.frame.height - 250,
   };
   return `<g id="${panel.id}">
+    <title>${panel.label}</title>
     <rect x="${panel.frame.x}" y="${panel.frame.y}" width="${panel.frame.width}" height="${panel.frame.height}" class="panel"/>
     ${renderGuides(panel, plot, wavelength)}
     <g clip-path="url(#clip-${panel.id})">${renderCurves(panel, plot, samples)}</g>
@@ -160,9 +164,10 @@ function renderPanel(panel: Panel, samples: readonly SampleState[], wavelength: 
 
 export function buildDiffractogramSvg(samples: readonly SampleState[]): string {
   const wavelength = samples[0]?.wavelength ?? 1.5406;
-  const panels: readonly Panel[] = [
+  const basePanels: readonly Panel[] = [
     {
       id: 'air-dry',
+      label: 'VS',
       frame: { x: 35, y: 25, width: 1430, height: 1085 },
       xDomain: [2, 30],
       guides: AIR_DRY_GUIDES,
@@ -171,6 +176,7 @@ export function buildDiffractogramSvg(samples: readonly SampleState[]): string {
     },
     {
       id: 'glycol',
+      label: 'GL',
       frame: { x: 35, y: 1160, width: 700, height: 1165 },
       xDomain: [2, 15],
       guides: GL_GUIDES,
@@ -179,22 +185,45 @@ export function buildDiffractogramSvg(samples: readonly SampleState[]): string {
     },
     {
       id: 'heated',
+      label: 'PK',
       frame: { x: 765, y: 1160, width: 700, height: 1165 },
       xDomain: [2, 15],
       guides: PK_GUIDES,
       data: (sample) => sample.rawPkData,
-      emptyText: 'PK 550 °C не загружен',
+      emptyText: 'PK не загружен',
     },
   ];
+  const extraSources: readonly Pick<Panel, 'id' | 'label' | 'data' | 'emptyText'>[] = [
+    { id: 'tp', label: 'TP', data: (sample) => sample.rawTpData, emptyText: 'TP не загружен' },
+    { id: 'sp', label: 'SP', data: (sample) => sample.rawSpData, emptyText: 'SP не загружен' },
+    { id: 'ost', label: 'OST', data: (sample) => sample.rawOstData, emptyText: 'OST не загружен' },
+  ];
+  const extraPanels: readonly Panel[] = extraSources
+    .filter((source) => samples.some((sample) => source.data(sample)?.length))
+    .map((source, index) => ({
+      ...source,
+      frame: {
+        x: 35,
+        y: BASE_SVG_HEIGHT + 15 + index * (FULL_PANEL_HEIGHT + FULL_PANEL_GAP),
+        width: 1430,
+        height: FULL_PANEL_HEIGHT,
+      },
+      xDomain: [2, 30] as const,
+      guides: AIR_DRY_GUIDES,
+    }));
+  const panels: readonly Panel[] = [...basePanels, ...extraPanels];
+  const svgHeight = extraPanels.length
+    ? extraPanels.at(-1)!.frame.y + FULL_PANEL_HEIGHT + 35
+    : BASE_SVG_HEIGHT;
   const clipPaths = panels.map((panel) => {
     const plot = { x: panel.frame.x + 94, y: panel.frame.y + 150, width: panel.frame.width - 142, height: panel.frame.height - 250 };
     return `<clipPath id="clip-${panel.id}"><rect x="${plot.x}" y="${plot.y}" width="${plot.width + 45}" height="${plot.height}"/></clipPath>`;
   }).join('');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${SVG_WIDTH}" height="${SVG_HEIGHT}" viewBox="0 0 ${SVG_WIDTH} ${SVG_HEIGHT}" role="img" aria-labelledby="title description">
+<svg xmlns="http://www.w3.org/2000/svg" width="${SVG_WIDTH}" height="${svgHeight}" viewBox="0 0 ${SVG_WIDTH} ${svgHeight}" role="img" aria-labelledby="title description">
   <title id="title">Дифрактограммы образцов</title>
-  <desc id="description">Воздушно-сухие, насыщенные и прокалённые при 550 °C препараты</desc>
+  <desc id="description">Серии VS, GL, PK, TP, SP и OST</desc>
   <defs>
     ${clipPaths}
     <style>
@@ -210,7 +239,7 @@ export function buildDiffractogramSvg(samples: readonly SampleState[]): string {
       .empty { fill: #777; font-size: 22px; }
     </style>
   </defs>
-  <rect width="${SVG_WIDTH}" height="${SVG_HEIGHT}" fill="#fff"/>
+  <rect width="${SVG_WIDTH}" height="${svgHeight}" fill="#fff"/>
   ${panels.map((panel) => renderPanel(panel, samples, wavelength)).join('\n  ')}
 </svg>`;
 }
