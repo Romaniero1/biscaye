@@ -84,6 +84,8 @@ function buildSeriesXml(series: ProfileSeries, index: number, sampleCount: numbe
 function buildChartXml(sampleCount: number): string {
   const xAxisId = 100_000;
   const yAxisId = 100_001;
+  const yAxisMinimum = sampleCount === 1 ? 0.5 : 1;
+  const yAxisMaximum = sampleCount === 1 ? 1.5 : sampleCount;
   const series = PROFILE_SERIES.map((profile, index) => buildSeriesXml(profile, index, sampleCount)).join('');
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -109,7 +111,7 @@ function buildChartXml(sampleCount: number): string {
         <c:crossAx val="${yAxisId}"/><c:crosses val="max"/><c:majorUnit val="20"/>
       </c:valAx>
       <c:valAx>
-        <c:axId val="${yAxisId}"/><c:scaling><c:orientation val="maxMin"/><c:max val="${sampleCount + 0.5}"/><c:min val="0.5"/></c:scaling><c:delete val="0"/><c:axPos val="l"/>
+        <c:axId val="${yAxisId}"/><c:scaling><c:orientation val="maxMin"/><c:max val="${yAxisMaximum}"/><c:min val="${yAxisMinimum}"/></c:scaling><c:delete val="0"/><c:axPos val="l"/>
         ${axisTitle('Образец, №')}
         <c:numFmt formatCode="0" sourceLinked="0"/><c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>
         <c:spPr><a:ln w="19050"><a:solidFill><a:srgbClr val="333333"/></a:solidFill></a:ln></c:spPr>

@@ -48,6 +48,7 @@ async function verify(): Promise<void> {
     const index = archive.FullPaths.indexOf(path);
     const xml = new TextDecoder().decode(archive.FileIndex[index].content);
     if (!xml.includes('<c:min val="0"/>') || !xml.includes('<c:orientation val="maxMin"/>')) throw new Error(`Chart axes: ${path}`);
+    if (!xml.includes('<c:max val="3"/><c:min val="1"/>')) throw new Error('Sample axis must use integer bounds');
     if ((xml.match(/<c:ser>/g) ?? []).length !== 4) throw new Error('Expected four mineral series in the chart');
   }
 
