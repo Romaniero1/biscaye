@@ -69,7 +69,7 @@ const results = pairs.map((pair) => {
 });
 
 const svg = buildDiffractogramSvg(fittedSamples);
-for (const fragment of ['id="air-dry"', 'id="glycol"', 'id="heated"', '>17.5<', '>3.58<', 'θ/2θ (градусы)']) {
+for (const fragment of ['id="air-dry"', 'id="glycol"', 'id="heated"', '>17.5<', '>3.58<', '>3.34<', '>3.24<', 'θ/2θ (градусы)']) {
   if (!svg.includes(fragment)) throw new Error(`SVG не содержит обязательный элемент: ${fragment}`);
 }
 for (const panelId of ['tp', 'sp', 'ost']) {

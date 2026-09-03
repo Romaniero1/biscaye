@@ -1,9 +1,10 @@
 import type { SampleState } from '../types';
 import { buildExportRows, downloadBlob } from './exportData';
+import { addMineralProfileCharts } from './xlsxProfileCharts';
 
-export async function exportXlsx(samples: readonly SampleState[], fileName = 'biscaye-results.xlsx'): Promise<void> {
+export async function buildXlsxReport(samples: readonly SampleState[]): Promise<ArrayBuffer | null> {
   const rows = buildExportRows(samples);
-  if (!rows.length) return;
+  if (!rows.length) return null;
   const XLSX = await import('xlsx');
   const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: false });
   worksheet['!cols'] = Object.keys(rows[0]).map((header) => ({ wch: Math.max(10, Math.min(55, header.length + 4)) }));
@@ -16,6 +17,15 @@ export async function exportXlsx(samples: readonly SampleState[], fileName = 'bi
   }
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Biscaye');
-  const data = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+  const profiles = XLSX.utils.aoa_to_sheet([['Профили распределения минералов']]);
+  profiles['!cols'] = Array.from({ length: 16 }, () => ({ wch: 11 }));
+  XLSX.utils.book_append_sheet(workbook, profiles, 'Профили');
+  const data = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+  return addMineralProfileCharts(XLSX, data, samples.length);
+}
+
+export async function exportXlsx(samples: readonly SampleState[], fileName = 'biscaye-results.xlsx'): Promise<void> {
+  const data = await buildXlsxReport(samples);
+  if (!data) return;
   downloadBlob(new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), fileName);
 }

@@ -10,7 +10,7 @@ const FULL_PANEL_GAP = 50;
 const CURVE_COLORS = ['#ff1717', '#1428ff', '#138c1b', '#ffa20b', '#86118d', '#303030', '#f01818'] as const;
 
 type Frame = Readonly<{ x: number; y: number; width: number; height: number }>;
-type Guide = Readonly<{ d: number; label: string; level?: number }>;
+type Guide = Readonly<{ d: number; label: string }>;
 type Panel = Readonly<{
   id: string;
   label: string;
@@ -30,9 +30,9 @@ const AIR_DRY_GUIDES: readonly Guide[] = [
   { d: 4.5, label: '4.5' },
   { d: 4.25, label: '4.25' },
   { d: 3.58, label: '3.58' },
-  { d: 3.54, label: '3.54', level: 1 },
+  { d: 3.54, label: '3.54' },
   { d: 3.34, label: '3.34' },
-  { d: 3.23, label: '3.23', level: 1 },
+  { d: 3.24, label: '3.24' },
   { d: 3.19, label: '3.19' },
 ];
 
@@ -97,7 +97,7 @@ function curvePath(
   if (!(high > low)) high = Math.max(...intensities);
   const span = high > low ? high - low : 1;
   return downsample(data).map((point, index) => {
-    const relative = Math.max(-0.08, Math.min(1.12, (point.y - low) / span));
+    const relative = Math.max(-0.08, (point.y - low) / span);
     const x = xPosition(point.x, domain, plot.x, plot.width);
     const y = baselineY - relative * amplitude;
     return `${index ? 'L' : 'M'}${x.toFixed(2)} ${y.toFixed(2)}`;
@@ -121,9 +121,8 @@ function renderGuides(panel: Panel, plot: Frame, wavelength: number): string {
     const twoTheta = dToTwoTheta(guide.d, wavelength);
     if (twoTheta < panel.xDomain[0] || twoTheta > panel.xDomain[1]) return '';
     const x = xPosition(twoTheta, panel.xDomain, plot.x, plot.width);
-    const labelY = plot.y - 16 + (guide.level ?? 0) * 72;
-    const lineY = Math.max(plot.y, labelY + 12);
-    return `<g class="guide"><line x1="${number(x)}" y1="${number(lineY)}" x2="${number(x)}" y2="${number(plot.y + plot.height)}"/><text x="${number(x)}" y="${number(labelY)}" dominant-baseline="middle" transform="rotate(-90 ${number(x)} ${number(labelY)})">${guide.label}</text></g>`;
+    const labelY = plot.y - 16;
+    return `<g class="guide"><line x1="${number(x)}" y1="${number(plot.y)}" x2="${number(x)}" y2="${number(plot.y + plot.height)}"/><text x="${number(x)}" y="${number(labelY)}" dominant-baseline="middle" transform="rotate(-90 ${number(x)} ${number(labelY)})">${guide.label}</text></g>`;
   }).join('');
 }
 
@@ -217,7 +216,7 @@ export function buildDiffractogramSvg(samples: readonly SampleState[]): string {
     : BASE_SVG_HEIGHT;
   const clipPaths = panels.map((panel) => {
     const plot = { x: panel.frame.x + 94, y: panel.frame.y + 150, width: panel.frame.width - 142, height: panel.frame.height - 250 };
-    return `<clipPath id="clip-${panel.id}"><rect x="${plot.x}" y="${plot.y}" width="${plot.width + 45}" height="${plot.height}"/></clipPath>`;
+    return `<clipPath id="clip-${panel.id}"><rect x="${plot.x}" y="${panel.frame.y}" width="${plot.width + 45}" height="${panel.frame.height}"/></clipPath>`;
   }).join('');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
