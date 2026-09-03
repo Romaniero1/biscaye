@@ -10,13 +10,13 @@ type Archive = {
   FileIndex: ArchiveEntry[];
 };
 
-type ProfileChart = Readonly<{
+type ProfileSeries = Readonly<{
   title: string;
   valueColumn: string;
   color: string;
 }>;
 
-const PROFILE_CHARTS: readonly ProfileChart[] = [
+const PROFILE_SERIES: readonly ProfileSeries[] = [
   { title: 'Smectite + I/S, %', valueColumn: 'C', color: '008C87' },
   { title: 'Illite, %', valueColumn: 'D', color: '2878B5' },
   { title: 'Chlorite, %', valueColumn: 'E', color: '3A923A' },
@@ -63,34 +63,40 @@ function axisTitle(title: string): string {
   return `<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1000"/></a:pPr><a:r><a:rPr lang="ru-RU" sz="1000"/><a:t>${xmlText(title)}</a:t></a:r></a:p></c:rich></c:tx><c:layout/><c:overlay val="0"/></c:title>`;
 }
 
-function buildChartXml(chart: ProfileChart, index: number, sampleCount: number): string {
+function buildSeriesXml(series: ProfileSeries, index: number, sampleCount: number): string {
   const firstRow = 2;
   const lastRow = sampleCount + 1;
-  const xAxisId = 100_000 + index * 2;
-  const yAxisId = xAxisId + 1;
-  const titleReference = `'Biscaye'!$${chart.valueColumn}$1`;
-  const valueReference = `'Biscaye'!$${chart.valueColumn}$${firstRow}:$${chart.valueColumn}$${lastRow}`;
+  const titleReference = `'Biscaye'!$${series.valueColumn}$1`;
+  const valueReference = `'Biscaye'!$${series.valueColumn}$${firstRow}:$${series.valueColumn}$${lastRow}`;
   const orderReference = `'Biscaye'!$A$${firstRow}:$A$${lastRow}`;
+
+  return `<c:ser>
+          <c:idx val="${index}"/><c:order val="${index}"/>
+          <c:tx><c:strRef><c:f>${titleReference}</c:f></c:strRef></c:tx>
+          <c:spPr><a:ln w="28575"><a:solidFill><a:srgbClr val="${series.color}"/></a:solidFill><a:prstDash val="solid"/></a:ln></c:spPr>
+          <c:marker><c:symbol val="square"/><c:size val="6"/><c:spPr><a:solidFill><a:srgbClr val="${series.color}"/></a:solidFill><a:ln><a:solidFill><a:srgbClr val="${series.color}"/></a:solidFill></a:ln></c:spPr></c:marker>
+          <c:xVal><c:numRef><c:f>${valueReference}</c:f></c:numRef></c:xVal>
+          <c:yVal><c:numRef><c:f>${orderReference}</c:f></c:numRef></c:yVal>
+          <c:smooth val="0"/>
+        </c:ser>`;
+}
+
+function buildChartXml(sampleCount: number): string {
+  const xAxisId = 100_000;
+  const yAxisId = 100_001;
+  const series = PROFILE_SERIES.map((profile, index) => buildSeriesXml(profile, index, sampleCount)).join('');
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <c:date1904 val="0"/><c:lang val="ru-RU"/><c:roundedCorners val="0"/>
   <c:chart>
-    ${chartTitle(chart.title)}
+    ${chartTitle('Минеральный состав')}
     <c:autoTitleDeleted val="0"/>
     <c:plotArea>
       <c:layout/>
       <c:scatterChart>
         <c:scatterStyle val="lineMarker"/><c:varyColors val="0"/>
-        <c:ser>
-          <c:idx val="0"/><c:order val="0"/>
-          <c:tx><c:strRef><c:f>${titleReference}</c:f></c:strRef></c:tx>
-          <c:spPr><a:ln w="28575"><a:solidFill><a:srgbClr val="${chart.color}"/></a:solidFill><a:prstDash val="solid"/></a:ln></c:spPr>
-          <c:marker><c:symbol val="square"/><c:size val="6"/><c:spPr><a:solidFill><a:srgbClr val="${chart.color}"/></a:solidFill><a:ln><a:solidFill><a:srgbClr val="${chart.color}"/></a:solidFill></a:ln></c:spPr></c:marker>
-          <c:xVal><c:numRef><c:f>${valueReference}</c:f></c:numRef></c:xVal>
-          <c:yVal><c:numRef><c:f>${orderReference}</c:f></c:numRef></c:yVal>
-          <c:smooth val="0"/>
-        </c:ser>
+        ${series}
         <c:dLbls><c:showLegendKey val="0"/><c:showVal val="0"/><c:showCatName val="0"/><c:showSerName val="0"/></c:dLbls>
         <c:axId val="${xAxisId}"/><c:axId val="${yAxisId}"/>
       </c:scatterChart>
@@ -110,7 +116,7 @@ function buildChartXml(chart: ProfileChart, index: number, sampleCount: number):
         <c:crossAx val="${xAxisId}"/><c:crosses val="autoZero"/><c:majorUnit val="1"/>
       </c:valAx>
     </c:plotArea>
-    <c:legend><c:legendPos val="r"/><c:delete val="1"/></c:legend>
+    <c:legend><c:legendPos val="r"/><c:layout/><c:overlay val="0"/></c:legend>
     <c:plotVisOnly val="0"/><c:dispBlanksAs val="gap"/><c:showDLblsOverMax val="0"/>
   </c:chart>
   <c:printSettings><c:headerFooter/><c:pageMargins b="0.75" l="0.7" r="0.7" t="0.75" header="0.3" footer="0.3"/><c:pageSetup/></c:printSettings>
@@ -119,25 +125,20 @@ function buildChartXml(chart: ProfileChart, index: number, sampleCount: number):
 
 function buildDrawingXml(sampleCount: number): string {
   const chartHeight = Math.max(30, Math.min(70, sampleCount * 3 + 12));
-  const anchors = PROFILE_CHARTS.map((_, index) => {
-    const column = index % 2 === 0 ? 0 : 8;
-    const row = index < 2 ? 1 : chartHeight + 3;
-    return `<xdr:twoCellAnchor editAs="oneCell">
-      <xdr:from><xdr:col>${column}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${row}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>
-      <xdr:to><xdr:col>${column + 7}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${row + chartHeight}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
-      <xdr:graphicFrame macro=""><xdr:nvGraphicFramePr><xdr:cNvPr id="${index + 2}" name="Профиль ${index + 1}"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm/>
-        <a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart r:id="rId${index + 1}"/></a:graphicData></a:graphic>
-      </xdr:graphicFrame><xdr:clientData/>
-    </xdr:twoCellAnchor>`;
-  }).join('');
+  const anchor = `<xdr:twoCellAnchor editAs="oneCell">
+    <xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>
+    <xdr:to><xdr:col>12</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${chartHeight + 1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
+    <xdr:graphicFrame macro=""><xdr:nvGraphicFramePr><xdr:cNvPr id="2" name="Минеральный состав"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm/>
+      <a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart r:id="rId1"/></a:graphicData></a:graphic>
+    </xdr:graphicFrame><xdr:clientData/>
+  </xdr:twoCellAnchor>`;
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${anchors}</xdr:wsDr>`;
+<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${anchor}</xdr:wsDr>`;
 }
 
 function buildDrawingRelationships(): string {
-  const relationships = PROFILE_CHARTS.map((_, index) => `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart${index + 1}.xml"/>`).join('');
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${relationships}</Relationships>`;
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart1.xml"/></Relationships>';
 }
 
 export function addMineralProfileCharts(XLSX: XlsxModule, workbookData: ArrayBuffer, sampleCount: number): ArrayBuffer {
@@ -150,11 +151,11 @@ export function addMineralProfileCharts(XLSX: XlsxModule, workbookData: ArrayBuf
   writeArchiveText(XLSX, archive, 'xl/worksheets/_rels/sheet2.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>');
   writeArchiveText(XLSX, archive, 'xl/drawings/drawing1.xml', buildDrawingXml(sampleCount));
   writeArchiveText(XLSX, archive, 'xl/drawings/_rels/drawing1.xml.rels', buildDrawingRelationships());
-  PROFILE_CHARTS.forEach((chart, index) => writeArchiveText(XLSX, archive, `xl/charts/chart${index + 1}.xml`, buildChartXml(chart, index, sampleCount)));
+  writeArchiveText(XLSX, archive, 'xl/charts/chart1.xml', buildChartXml(sampleCount));
 
   const contentTypesPath = '[Content_Types].xml';
   const contentTypes = readArchiveText(archive, contentTypesPath);
-  const chartOverrides = PROFILE_CHARTS.map((_, index) => `<Override PartName="/xl/charts/chart${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`).join('');
+  const chartOverrides = '<Override PartName="/xl/charts/chart1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>';
   const drawingOverride = '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>';
   writeArchiveText(XLSX, archive, contentTypesPath, contentTypes.replace('</Types>', `${drawingOverride}${chartOverrides}</Types>`));
 

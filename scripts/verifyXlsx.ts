@@ -38,7 +38,7 @@ async function verify(): Promise<void> {
   const archive = XLSX.CFB.read(new Uint8Array(data), { type: 'buffer' }) as { FullPaths: string[]; FileIndex: { content?: Uint8Array }[] };
   if (new Set(archive.FullPaths).size !== archive.FullPaths.length) throw new Error('Duplicate XLSX archive parts');
   const chartPaths = archive.FullPaths.filter((path) => /\/xl\/charts\/chart\d+\.xml$/.test(path));
-  if (chartPaths.length !== 4) throw new Error(`Expected 4 mineral charts, received ${chartPaths.length}`);
+  if (chartPaths.length !== 1) throw new Error(`Expected one mineral chart, received ${chartPaths.length}`);
   const sheetPath = archive.FullPaths.find((path) => path.endsWith('/xl/worksheets/sheet2.xml'));
   if (!sheetPath) throw new Error('Profiles worksheet XML');
   const sheetIndex = archive.FullPaths.indexOf(sheetPath);
@@ -48,6 +48,7 @@ async function verify(): Promise<void> {
     const index = archive.FullPaths.indexOf(path);
     const xml = new TextDecoder().decode(archive.FileIndex[index].content);
     if (!xml.includes('<c:min val="0"/>') || !xml.includes('<c:orientation val="maxMin"/>')) throw new Error(`Chart axes: ${path}`);
+    if ((xml.match(/<c:ser>/g) ?? []).length !== 4) throw new Error('Expected four mineral series in the chart');
   }
 
   const fs = require('node:fs');
