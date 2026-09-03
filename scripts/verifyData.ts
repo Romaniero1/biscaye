@@ -25,6 +25,11 @@ const pairs = pairXrdFiles(loaded);
 if (pairs.length !== 6 || pairs.some((pair) => !pair.gl || !pair.vs)) {
   throw new Error(`Ожидалось 6 полных GL/VS-пар, получено ${pairs.length}`);
 }
+for (const state of ['pk', 'tp', 'sp', 'ost'] as const) {
+  const loadedCount = loaded.filter((file) => file.fileName.match(new RegExp(`[._-]${state}(?:[._-]|\\.)`, 'i'))).length;
+  const pairedCount = pairs.filter((pair) => pair[state]).length;
+  if (loadedCount !== pairedCount) throw new Error(`${state.toUpperCase()}: загружено ${loadedCount}, привязано к образцам ${pairedCount}`);
+}
 
 const fittedSamples: SampleState[] = [];
 const results = pairs.map((pair) => {
@@ -64,10 +69,13 @@ const results = pairs.map((pair) => {
 });
 
 const svg = buildDiffractogramSvg(fittedSamples);
-for (const fragment of ['id="air-dry"', 'id="glycol"', 'id="heated"', '>17.5<', '>3.58<', 'θ/2θ (градусы)', 'PK не загружен']) {
+for (const fragment of ['id="air-dry"', 'id="glycol"', 'id="heated"', '>17.5<', '>3.58<', 'θ/2θ (градусы)']) {
   if (!svg.includes(fragment)) throw new Error(`SVG не содержит обязательный элемент: ${fragment}`);
 }
-if ((svg.match(/class="sample-label"/g) ?? []).length !== fittedSamples.length * 2) throw new Error('SVG sample labels without PK');
+for (const panelId of ['tp', 'sp', 'ost']) {
+  if (!svg.includes(`id="${panelId}"`)) throw new Error(`SVG не содержит панель ${panelId.toUpperCase()} из реальных файлов`);
+}
+if ((svg.match(/class="sample-label"/g) ?? []).length !== fittedSamples.length * 6) throw new Error('SVG sample labels for all loaded series');
 const extendedSvg = buildDiffractogramSvg(fittedSamples.map((sample) => ({
   ...sample,
   rawTpData: sample.rawVsData,
@@ -78,7 +86,7 @@ for (const panelId of ['tp', 'sp', 'ost']) {
   if (!extendedSvg.includes(`id="${panelId}"`)) throw new Error(`SVG ${panelId.toUpperCase()} panel`);
 }
 if (!extendedSvg.includes('height="5765"') || (extendedSvg.match(/>3\.58</g) ?? []).length !== 4) throw new Error('Dynamic SVG panels and VS guides');
-if ((extendedSvg.match(/class="sample-label"/g) ?? []).length !== fittedSamples.length * 5) throw new Error('SVG sample labels with TP/SP/OST');
+if ((extendedSvg.match(/class="sample-label"/g) ?? []).length !== fittedSamples.length * 6) throw new Error('SVG sample labels with PK/TP/SP/OST');
 
 console.table(results);
 console.log('Real data parsing and GL/VS pairing checks passed');

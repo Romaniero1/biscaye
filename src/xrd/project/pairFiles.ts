@@ -17,6 +17,10 @@ export type PairedFiles = {
 
 export type XrdFileState = 'GL' | 'VS' | 'PK' | 'TP' | 'SP' | 'OST';
 
+function pairingKey(sampleId: string): string {
+  return sampleId.replace(/\.il(?=([._-]|$))/i, '').toLocaleLowerCase();
+}
+
 export function identifyXrdFile(fileName: string): { sampleId: string; state: XrdFileState } | null {
   const withoutExtension = fileName.replace(/\.[^.]+$/, '');
   const match = withoutExtension.match(/^(.*?)[._-](GL|VS|PK|TP|SP|OST)((?:[._-].+)?)$/i);
@@ -32,8 +36,9 @@ export function pairXrdFiles(files: readonly LoadedXrdFile[]): PairedFiles[] {
   for (const file of files) {
     const identity = identifyXrdFile(file.fileName);
     if (!identity) continue;
-    const key = identity.sampleId.toLocaleLowerCase();
+    const key = pairingKey(identity.sampleId);
     const entry = paired.get(key) ?? { sampleId: identity.sampleId };
+    if (identity.state === 'GL') entry.sampleId = identity.sampleId;
     entry[identity.state.toLowerCase() as 'gl' | 'vs' | 'pk' | 'tp' | 'sp' | 'ost'] = file;
     paired.set(key, entry);
   }

@@ -1,7 +1,7 @@
 import { calculateBiscaye } from '../src/xrd/biscaye/calculateBiscaye';
 import { splitKaoliniteChlorite } from '../src/xrd/biscaye/splitKaoliniteChlorite';
 import { parseDat } from '../src/xrd/parsers/parseDat';
-import { identifyXrdFile } from '../src/xrd/project/pairFiles';
+import { identifyXrdFile, pairXrdFiles } from '../src/xrd/project/pairFiles';
 import { deserializeProject } from '../src/xrd/project/deserializeProject';
 import { dToTwoTheta, twoThetaToD } from '../src/xrd/physics/bragg';
 import { gaussianArea, gaussianValue } from '../src/xrd/peaks/gaussian';
@@ -66,6 +66,24 @@ if (pkIdentity?.sampleId !== '1-6.il_004' || pkIdentity.state !== 'PK') throw ne
 for (const state of ['TP', 'SP', 'OST'] as const) {
   const extraIdentity = identifyXrdFile(`1-6.il.${state.toLowerCase()}_004.txt`);
   if (extraIdentity?.sampleId !== '1-6.il_004' || extraIdentity.state !== state) throw new Error(`${state} pairing`);
+}
+const mixedFractionPair = pairXrdFiles([
+  { fileName: '1-6.il.gl_004.txt', parsed },
+  { fileName: '1-6.il.vs_004.txt', parsed },
+  { fileName: '1-6.il.pk_004.txt', parsed },
+  { fileName: '1-6.tp_004.txt', parsed },
+  { fileName: '1-6.sp_004.txt', parsed },
+  { fileName: '1-6.ost_004.txt', parsed },
+]);
+if (mixedFractionPair.length !== 1
+  || mixedFractionPair[0].sampleId !== '1-6.il_004'
+  || !mixedFractionPair[0].gl
+  || !mixedFractionPair[0].vs
+  || !mixedFractionPair[0].pk
+  || !mixedFractionPair[0].tp
+  || !mixedFractionPair[0].sp
+  || !mixedFractionPair[0].ost) {
+  throw new Error('Pairing .il GL/VS/PK with TP/SP/OST');
 }
 if (buildProjectFileName('Проект', 6, 'XLSX', 'xlsx') !== 'Проект_6_XLSX.xlsx') throw new Error('Project export filename');
 
