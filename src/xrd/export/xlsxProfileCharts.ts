@@ -2,6 +2,7 @@ type XlsxModule = typeof import('xlsx');
 
 type ArchiveEntry = {
   content?: Uint8Array;
+  size?: number;
 };
 
 type Archive = {
@@ -44,7 +45,14 @@ function readArchiveText(archive: Archive, path: string): string {
 }
 
 function writeArchiveText(XLSX: XlsxModule, archive: Archive, path: string, content: string): void {
-  XLSX.CFB.utils.cfb_add(archive, path, new TextEncoder().encode(content));
+  const encoded = new TextEncoder().encode(content);
+  const index = archive.FullPaths.indexOf(archivePath(archive, path));
+  if (index >= 0) {
+    archive.FileIndex[index].content = encoded;
+    archive.FileIndex[index].size = encoded.length;
+    return;
+  }
+  XLSX.CFB.utils.cfb_add(archive, path, encoded);
 }
 
 function chartTitle(title: string): string {
@@ -137,9 +145,7 @@ export function addMineralProfileCharts(XLSX: XlsxModule, workbookData: ArrayBuf
   const sheetPath = 'xl/worksheets/sheet2.xml';
   const sheetXml = readArchiveText(archive, sheetPath);
   const drawingTag = '<drawing r:id="rId1"/>';
-  const sheetWithDrawing = sheetXml.includes('<ignoredErrors>')
-    ? sheetXml.replace('<ignoredErrors>', `${drawingTag}<ignoredErrors>`)
-    : sheetXml.replace('</worksheet>', `${drawingTag}</worksheet>`);
+  const sheetWithDrawing = sheetXml.replace('</worksheet>', `${drawingTag}</worksheet>`);
   writeArchiveText(XLSX, archive, sheetPath, sheetWithDrawing);
   writeArchiveText(XLSX, archive, 'xl/worksheets/_rels/sheet2.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>');
   writeArchiveText(XLSX, archive, 'xl/drawings/drawing1.xml', buildDrawingXml(sampleCount));

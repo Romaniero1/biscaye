@@ -36,8 +36,14 @@ async function verify(): Promise<void> {
   if (workbook.SheetNames.join('|') !== 'Biscaye|Профили') throw new Error('XLSX worksheets');
 
   const archive = XLSX.CFB.read(new Uint8Array(data), { type: 'buffer' }) as { FullPaths: string[]; FileIndex: { content?: Uint8Array }[] };
+  if (new Set(archive.FullPaths).size !== archive.FullPaths.length) throw new Error('Duplicate XLSX archive parts');
   const chartPaths = archive.FullPaths.filter((path) => /\/xl\/charts\/chart\d+\.xml$/.test(path));
   if (chartPaths.length !== 4) throw new Error(`Expected 4 mineral charts, received ${chartPaths.length}`);
+  const sheetPath = archive.FullPaths.find((path) => path.endsWith('/xl/worksheets/sheet2.xml'));
+  if (!sheetPath) throw new Error('Profiles worksheet XML');
+  const sheetIndex = archive.FullPaths.indexOf(sheetPath);
+  const sheetXml = new TextDecoder().decode(archive.FileIndex[sheetIndex].content);
+  if (sheetXml.indexOf('</ignoredErrors>') > sheetXml.indexOf('<drawing ')) throw new Error('Drawing must follow ignoredErrors in worksheet XML');
   for (const path of chartPaths) {
     const index = archive.FullPaths.indexOf(path);
     const xml = new TextDecoder().decode(archive.FileIndex[index].content);
