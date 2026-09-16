@@ -12,7 +12,7 @@ import { DEFAULT_SETTINGS, type PeakFit, type SampleState } from '../src/xrd/typ
 import { cropGlData } from '../src/xrd/processing/cropGlData';
 import { vsDoubletWindow, vsLinearBaseline } from '../src/xrd/baseline/vsLinearBaseline';
 import { buildRefinedBackground, createBackgroundPoints, smoothBackgroundValue } from '../src/xrd/baseline/refinedBackground';
-import { detectVsReflections, moveDetectedMarker } from '../src/xrd/peaks/detectPeak';
+import { detectGlReflections, detectVsReflections, moveDetectedMarker } from '../src/xrd/peaks/detectPeak';
 import { buildProjectFileName } from '../src/xrd/export/exportData';
 import { fitPeak } from '../src/xrd/peaks/fitPeak';
 
@@ -151,6 +151,29 @@ const syntheticSample: SampleState = {
   warnings: ['VS не найден'], manualOverrides: { background: false, markers: [] }, fitted: false,
 };
 
+const weakCenter = dToTwoTheta(17, wavelength);
+const weakSignal = Array.from({ length: 1301 }, (_, index) => {
+  const x = 2 + index * 0.01;
+  return { x, y: Math.abs(x - weakCenter) < 0.005 ? 6 : index % 2 ? -1 : 1 };
+});
+const weakDetection = detectGlReflections({
+  ...syntheticSample,
+  rawGlData: weakSignal,
+  processedGlData: weakSignal,
+}, 'gaussian');
+if (weakDetection.reflections.smectite_17?.detected !== false
+  || !weakDetection.warnings.includes('Низкая интенсивность / проверьте пик')) {
+  throw new Error('Sub-5σ reflection must be treated as absent');
+}
+const refittedWeakSignal = fitSamplePeaks({
+  ...syntheticSample,
+  rawGlData: weakSignal,
+  processedGlData: weakSignal,
+}, 'gaussian', { optimizeCenters: true });
+if (refittedWeakSignal.reflections.smectite_17?.area !== 0) {
+  throw new Error('Explicit fit must redetect a weak reflection as absent');
+}
+
 const zeroSignal = Array.from({ length: 1301 }, (_, index) => ({ x: 2 + index * 0.01, y: 0 }));
 const zeroPeakOutcome = fitPeak({
   ...syntheticSample,
@@ -159,6 +182,19 @@ const zeroPeakOutcome = fitPeak({
   reflections: { smectite_17: { ...syntheticReflections.smectite_17!, height: 0 } },
 }, 'smectite_17', 'gaussian');
 if (!zeroPeakOutcome.fit.converged || zeroPeakOutcome.fit.area !== 0) throw new Error('Zero-area fitted peak must be valid');
+
+const absentSmectite = fitSamplePeaks({
+  ...syntheticSample,
+  reflections: {
+    ...syntheticReflections,
+    smectite_17: { ...syntheticReflections.smectite_17!, detected: false, height: 0 },
+  },
+  warnings: ['Максимум не найден: 16–18 Å'],
+}, 'gaussian');
+if (!absentSmectite.fitted || absentSmectite.reflections.smectite_17?.area !== 0) {
+  throw new Error('Absent reflection must be accepted as a zero-area phase');
+}
+assertClose(absentSmectite.result.smectiteIS, 0, 1e-12, 'Absent reflection Biscaye contribution');
 
 const { glCropRange: _legacyCropRange, ...legacySample } = syntheticSample;
 const restoredLegacyProject = deserializeProject(JSON.stringify({ schemaVersion: 1, settings: DEFAULT_SETTINGS, samples: [legacySample] }));

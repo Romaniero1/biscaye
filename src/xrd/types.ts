@@ -17,6 +17,8 @@ export type FitModel = 'pearson-vii' | 'gaussian';
 
 export type PeakFit = {
   model: FitModel;
+  /** False when automatic peak detection found no reliable local maximum. */
+  detected?: boolean;
   center2Theta: number;
   dAngstrom: number;
   height: number;

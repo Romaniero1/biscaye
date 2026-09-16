@@ -1,11 +1,16 @@
 import type { FitModel, SampleState } from '../types';
 import { fitPeak } from '../peaks/fitPeak';
 import { GL_REFLECTIONS } from '../peaks/reflections';
-import { detectVsReflections } from '../peaks/detectPeak';
+import { detectGlReflections, detectVsReflections } from '../peaks/detectPeak';
 import { calculateSample } from '../biscaye/calculateSample';
 
 const FIT_WARNINGS = ['Фитинг не сошёлся', 'Pearson VII не сошёлся; использован Gaussian', 'Некорректная площадь'];
 const VS_WARNINGS = ['K 002 не найден', 'Ch 004 не найден', 'Дублет не разделён'];
+const GL_DETECTION_WARNINGS = [
+  ...GL_REFLECTIONS.map(({ warningLabel }) => `Максимум не найден: ${warningLabel}`),
+  'Пик достиг границы автоматического поискового окна',
+  'Низкая интенсивность / проверьте пик',
+];
 
 type FitSampleOptions = {
   optimizeCenters?: boolean;
@@ -13,6 +18,7 @@ type FitSampleOptions = {
 
 export function fitSamplePeaks(sample: SampleState, model: FitModel, options: FitSampleOptions = {}): SampleState {
   let next = sample;
+  let detectionWarnings: string[] = [];
   if (options.optimizeCenters) {
     const reflections = { ...sample.reflections };
     for (const definition of GL_REFLECTIONS) {
@@ -28,10 +34,15 @@ export function fitSamplePeaks(sample: SampleState, model: FitModel, options: Fi
         markers: sample.manualOverrides.markers.filter((key) => !glKeys.has(key as typeof GL_REFLECTIONS[number]['key']) && key !== 'kaolinite_002' && key !== 'chlorite_004'),
       },
     };
+    const detected = detectGlReflections(next, model);
+    next = { ...next, reflections: detected.reflections };
+    detectionWarnings = detected.warnings;
   }
   const warnings = sample.warnings.filter((warning) => !FIT_WARNINGS.includes(warning)
     && !warning.startsWith('Один компонент плохо описывает профиль:')
+    && !(options.optimizeCenters && GL_DETECTION_WARNINGS.includes(warning))
     && !(options.optimizeCenters && VS_WARNINGS.includes(warning)));
+  warnings.push(...detectionWarnings);
   for (const definition of GL_REFLECTIONS) {
     const outcome = fitPeak(next, definition.key, model);
     next = { ...next, reflections: { ...next.reflections, [definition.key]: outcome.fit } };
