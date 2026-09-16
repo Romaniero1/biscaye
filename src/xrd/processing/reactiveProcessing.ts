@@ -15,7 +15,11 @@ export function refitMovedGlMarker(sample: SampleState, key: GlReflectionKey, mo
     reflections: { ...sample.reflections, [key]: outcome.fit },
     warnings: [...new Set(warnings)],
   };
-  next.fitted = GL_REFLECTIONS.every(({ key: reflectionKey }) => reflectionKey === 'diagnostic_14' || !!next.reflections[reflectionKey]?.converged);
+  next.fitted = GL_REFLECTIONS.every(({ key: reflectionKey }) => {
+    if (reflectionKey === 'diagnostic_14') return true;
+    const area = next.reflections[reflectionKey]?.area;
+    return area !== null && area !== undefined && Number.isFinite(area) && area >= 0;
+  });
   return calculateSample(next);
 }
 

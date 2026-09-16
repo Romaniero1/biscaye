@@ -82,8 +82,14 @@ function fitWithModel(sample: SampleState, key: GlReflectionKey, model: FitModel
   const current = sample.reflections[key];
   if (!current) return { fit: {
     model, center2Theta: dToTwoTheta(definition.nominalD, sample.wavelength), dAngstrom: definition.nominalD,
-    height: 0, fwhm: null, shapeM: null, area: null, converged: false, manuallyPositioned: false,
+    height: 0, fwhm: null, shapeM: null, area: 0, converged: false, manuallyPositioned: false,
   }, warnings: ['Фитинг не сошёлся'] };
+
+  // An automatically missing reflection contributes zero to Biscaye. Keep its
+  // marker and detection data intact so the user can still inspect or move it.
+  if (!current.manuallyPositioned && sample.warnings.includes(`Максимум не найден: ${definition.warningLabel}`)) {
+    return { fit: { ...current, model, area: 0, converged: false }, warnings: [] };
+  }
 
   const dAngles = definition.dRange.map((d) => dToTwoTheta(d, sample.wavelength));
   const autoWindow: [number, number] = [Math.min(...dAngles), Math.max(...dAngles)];
@@ -92,7 +98,7 @@ function fitWithModel(sample: SampleState, key: GlReflectionKey, model: FitModel
     ? [Math.max(2, current.center2Theta - Math.max(width * 0.65, 0.28)), Math.min(15, current.center2Theta + Math.max(width * 0.65, 0.28))]
     : [Math.max(2, autoWindow[0] - width * 0.3), Math.min(15, autoWindow[1] + width * 0.3)];
   const data = getGlSignal(sample).filter((point) => point.x >= fitWindow[0] && point.x <= fitWindow[1]);
-  if (data.length < 7) return { fit: { ...current, model, converged: false, area: null }, warnings: ['Фитинг не сошёлся'] };
+  if (data.length < 7) return { fit: { ...current, model, converged: false, area: 0 }, warnings: ['Фитинг не сошёлся'] };
   const maxPoint = data.reduce((best, point) => point.y > best.y ? point : best);
   const height = Math.max(current.height, maxPoint.y, 0);
   const step = Math.abs(data[1].x - data[0].x);
@@ -133,7 +139,10 @@ function fitWithModel(sample: SampleState, key: GlReflectionKey, model: FitModel
       height: fitHeight,
       fwhm,
       shapeM,
-      area: valid ? area : null,
+      // A failed fit must not block the other phases. Its quantitative
+      // contribution is zero, while `converged` and the warning retain the
+      // distinction between an actual zero and a successfully fitted peak.
+      area: valid ? area : 0,
       converged: valid,
       manuallyPositioned: current.manuallyPositioned,
     },

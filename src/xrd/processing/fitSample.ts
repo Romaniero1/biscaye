@@ -43,5 +43,13 @@ export function fitSamplePeaks(sample: SampleState, model: FitModel, options: Fi
     next = { ...next, reflections: vs.reflections };
     warnings.push(...vs.warnings);
   }
-  return calculateSample({ ...next, warnings: [...new Set(warnings)], fitted: GL_REFLECTIONS.every(({ key }) => key === 'diagnostic_14' || !!next.reflections[key]?.converged) });
+  return calculateSample({
+    ...next,
+    warnings: [...new Set(warnings)],
+    fitted: GL_REFLECTIONS.every(({ key }) => {
+      if (key === 'diagnostic_14') return true;
+      const area = next.reflections[key]?.area;
+      return area !== null && area !== undefined && Number.isFinite(area) && area >= 0;
+    }),
+  });
 }

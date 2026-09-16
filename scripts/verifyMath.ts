@@ -160,6 +160,23 @@ const zeroPeakOutcome = fitPeak({
 }, 'smectite_17', 'gaussian');
 if (!zeroPeakOutcome.fit.converged || zeroPeakOutcome.fit.area !== 0) throw new Error('Zero-area fitted peak must be valid');
 
+const missingSmectite = fitSamplePeaks({
+  ...syntheticSample,
+  warnings: ['Максимум не найден: 16–18 Å'],
+}, 'gaussian');
+if (!missingSmectite.fitted || missingSmectite.reflections.smectite_17?.area !== 0) {
+  throw new Error('Missing reflection must be accepted as a zero-area phase');
+}
+assertClose(missingSmectite.result.smectiteIS, 0, 1e-12, 'Missing reflection Biscaye contribution');
+
+const failedPeakOutcome = fitPeak({
+  ...syntheticSample,
+  processedGlData: syntheticData.filter((point) => Math.abs(point.x - dToTwoTheta(17, wavelength)) < 0.025),
+}, 'smectite_17', 'gaussian');
+if (failedPeakOutcome.fit.converged || failedPeakOutcome.fit.area !== 0) {
+  throw new Error('Failed fit must retain its warning state but contribute zero area');
+}
+
 const { glCropRange: _legacyCropRange, ...legacySample } = syntheticSample;
 const restoredLegacyProject = deserializeProject(JSON.stringify({ schemaVersion: 1, settings: DEFAULT_SETTINGS, samples: [legacySample] }));
 if (restoredLegacyProject.samples[0].glCropRange[0] !== 2 || restoredLegacyProject.samples[0].glCropRange[1] !== 15) throw new Error('Legacy project GL crop range');
