@@ -81,26 +81,9 @@ function fitWithModel(sample: SampleState, key: GlReflectionKey, model: FitModel
   const definition = GL_REFLECTIONS.find((entry) => entry.key === key)!;
   const current = sample.reflections[key];
   if (!current) return { fit: {
-    model, detected: false, center2Theta: dToTwoTheta(definition.nominalD, sample.wavelength), dAngstrom: definition.nominalD,
+    model, center2Theta: dToTwoTheta(definition.nominalD, sample.wavelength), dAngstrom: definition.nominalD,
     height: 0, fwhm: null, shapeM: null, area: null, converged: false, manuallyPositioned: false,
   }, warnings: ['Фитинг не сошёлся'] };
-
-  // An absent reflection is a valid quantitative result: its phase has zero
-  // area. A manual marker move explicitly opts back into fitting that peak.
-  if (current.detected === false && !current.manuallyPositioned) {
-    return {
-      fit: {
-        ...current,
-        model,
-        height: 0,
-        fwhm: null,
-        shapeM: null,
-        area: 0,
-        converged: true,
-      },
-      warnings: [],
-    };
-  }
 
   const dAngles = definition.dRange.map((d) => dToTwoTheta(d, sample.wavelength));
   const autoWindow: [number, number] = [Math.min(...dAngles), Math.max(...dAngles)];

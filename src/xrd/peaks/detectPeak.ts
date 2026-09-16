@@ -30,27 +30,18 @@ function detectInWindow(
   const noise = medianAbsoluteDeviation(values.slice(1).map((value, index) => value - values[index])) / Math.SQRT2;
   const prominence = maximum ? maximum.y - lower : 0;
   const scale = values.length ? Math.max(...values) - Math.min(...values) : 0;
-  const maximumIndex = maximum ? local.indexOf(maximum) : -1;
-  // A window edge on a sloping background is not a local peak. Treating it as
-  // one makes an absent phase fail the whole fit instead of contributing zero.
-  const isInteriorMaximum = maximumIndex > 0 && maximumIndex < local.length - 1;
-  const candidate = !!maximum && local.length >= 3 && isInteriorMaximum
-    && prominence > Math.max(3 * noise, scale * 0.08, Number.EPSILON);
-  // Signals below 5σ are useful as a visual hint, but are not reliable enough
-  // to quantify. They represent an absent reflection in the Biscaye result.
-  const reliable = candidate && prominence > Math.max(5 * noise, Number.EPSILON);
+  const reliable = !!maximum && local.length >= 3 && prominence > Math.max(3 * noise, scale * 0.08, Number.EPSILON);
   const center = reliable ? maximum.x : nominalX;
-  const height = reliable ? Math.max(0, maximum.y) : 0;
+  const height = reliable ? Math.max(0, maximum.y) : Math.max(0, lower || 0);
   const warnings = reliable ? [] : [`Максимум не найден: ${warningLabel}`];
-  if (candidate && !reliable) warnings.push('Низкая интенсивность / проверьте пик');
   const step = local.length > 1 ? Math.abs(local[1].x - local[0].x) : 0;
   if (reliable && (Math.abs(center - window[0]) <= step || Math.abs(center - window[1]) <= step)) {
     warnings.push('Пик достиг границы автоматического поискового окна');
   }
+  if (reliable && prominence <= Math.max(5 * noise, Number.EPSILON)) warnings.push('Низкая интенсивность / проверьте пик');
   return {
     fit: {
       model,
-      detected: reliable,
       center2Theta: center,
       dAngstrom: twoThetaToD(center, wavelength),
       height,
@@ -92,7 +83,6 @@ export function detectVsReflections(sample: SampleState): { reflections: Partial
     const center = maximum?.x ?? nominal;
     reflections[key] = {
       model: 'gaussian',
-      detected: !!maximum,
       center2Theta: center,
       dAngstrom: twoThetaToD(center, sample.wavelength),
       height: Math.max(0, maximum?.y ?? 0),
@@ -131,7 +121,6 @@ export function moveDetectedMarker(sample: SampleState, key: ReflectionKey, cent
       ...sample.reflections,
       [key]: {
         ...existing,
-        detected: true,
         center2Theta,
         dAngstrom: twoThetaToD(center2Theta, sample.wavelength),
         height: Math.max(0, nearest?.y ?? 0),
